@@ -260,7 +260,7 @@ namespace IPScan
                 Ping ping = new Ping();
                 PingOptions op = new PingOptions();
                 op.DontFragment = true;
-                int timeout = 1000;
+                int timeout = 2000;
                 string data = "aaa";
                 byte[] buff = Encoding.ASCII.GetBytes(data);
                 PingReply reply = ping.Send(IpAds, timeout, buff, op);
