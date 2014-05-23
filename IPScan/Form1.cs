@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
-
+using System.Runtime.InteropServices; 
 namespace IPScan
 {
 
@@ -34,6 +34,8 @@ namespace IPScan
         private int count = 0;
         //是否继续扫描,默认为继续
         private volatile int isScan = 1;
+        //采用了多少种扫描方法
+        int scanMethodNum = 1;
         public Form1()
         {
             InitializeComponent();
@@ -114,7 +116,7 @@ namespace IPScan
             //将IP转换为整数数字
             ResolveIp(startIP, endIP);
             //表示需要扫描的范围上限的总数
-            progressBar1.Maximum = Convert.ToInt32(endIp - startIp + 1);
+            progressBar1.Maximum = Convert.ToInt32(endIp - startIp + 1) * scanMethodNum;
             if (startIP == "" || endIP == "")
             {
                 MessageBox.Show(" 请输入起始ip和结束ip");
@@ -175,15 +177,19 @@ namespace IPScan
                 addProgressInvokeControl();
                 //调用IpTrs（）函数，将X转换成IP地址
                 string ip = IpTrs(x);
-                //创建扫描IP的对象
+
+                #region 使用Ping扫描ip
                 PingIp IP = new PingIp();
                 //使用线程会出现有的ip扫描了几遍，有的ip没有扫描 )
-                creatPingThread = new Thread(IP.pingIp);
+                creatPingThread = new Thread(IP.pingScan);
                 IP.IpAds = ip;
                 IP.form = this;
                 creatPingThread.IsBackground = true;
                 creatPingThread.Start();
                 Thread.Sleep(5);
+                #endregion
+
+
             }
             Thread.Sleep(2000);
             //去除重复的扫描结果
@@ -246,14 +252,23 @@ namespace IPScan
     //此类用于线程调用时，存数据
     public class PingIp
     {
+        #region 导入ARP_API
+        [DllImport("iphlpapi.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern Int32 SendARP(UInt32 udwDestIP, UInt32 udwSrcIP, byte[] pMacAddr, ref Int32 PhyAddrLen);
+        private const Int32 NUMBER_OF_PHYSICAL_ADDRESS_BYTES = 6;
+        #endregion
+
         //IP地址
         public string IpAds;
+        //物理地址
+        public string macDest;
         //是否是活动主机（默认为否）
         public int state = 0;
         //引用控件类
         public Form1 form;
+
         public PingIp() { }
-        public void pingIp() //设备地址扫描
+        public void pingScan() //设备地址扫描
         {
             try
             {
@@ -272,6 +287,26 @@ namespace IPScan
             }
             catch (Exception ex) { }
         }
+        public void arpScan()
+        {
+            byte[] abMacAddr = null;
+            Int32 dwPhyAddrLen = 0;
+            try
+            {
+                abMacAddr = new byte[NUMBER_OF_PHYSICAL_ADDRESS_BYTES];
+                dwPhyAddrLen = abMacAddr.Length;
 
+                if (SendARP(dwIP, 0, abMacAddr, ref dwPhyAddrLen) != 0)
+                {
+                    //Get Error!Reset byte array to null
+                    abMacAddr = null;
+                }
+            }
+            catch
+            {
+                abMacAddr = null;
+            }
+
+        }   
     }
 }
