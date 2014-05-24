@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
-using System.Runtime.InteropServices; 
+using System.Runtime.InteropServices;
 namespace IPScan
 {
 
@@ -142,10 +142,12 @@ namespace IPScan
             {
                 foreach (PingIp ip in ipList)
                 {
-                    if (ip.state==1)
+                    if (ip.state == 1)
                     {
-                        IPList.Items.Add(ip.IpAds+"  活动");
-                    }else{
+                        IPList.Items.Add(ip.IpAds + "  活动");
+                    }
+                    else
+                    {
                         IPList.Items.Add(ip.IpAds + "  下线");
                     }
                 }
@@ -193,9 +195,9 @@ namespace IPScan
             }
             Thread.Sleep(2000);
             //去除重复的扫描结果
-            for (int i = 0; i < ipList.Count;i++ )
+            for (int i = 0; i < ipList.Count; i++)
             {
-                for (int j = i+1; j < ipList.Count; j++)
+                for (int j = i + 1; j < ipList.Count; j++)
                 {
                     if (ipList[i].IpAds.Equals(ipList[j].IpAds))
                     {
@@ -253,8 +255,10 @@ namespace IPScan
     public class PingIp
     {
         #region 导入ARP_API
-        [DllImport("iphlpapi.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern Int32 SendARP(UInt32 udwDestIP, UInt32 udwSrcIP, byte[] pMacAddr, ref Int32 PhyAddrLen);
+        [DllImport("iphlpapi.dll")]
+        static extern int SendARP(Int32 DestIP, Int32 SrcIP, ref Int64 MacAddr, ref Int32 PhyAddrLen);
+        [DllImport("Ws2_32.dll")]
+        static extern Int32 inet_addr(string ipaddr);
         private const Int32 NUMBER_OF_PHYSICAL_ADDRESS_BYTES = 6;
         #endregion
 
@@ -284,29 +288,48 @@ namespace IPScan
                     this.state = 1;
                     form.ipList.Add(this);
                 }
+                arpScan();
             }
             catch (Exception ex) { }
         }
         public void arpScan()
         {
-            byte[] abMacAddr = null;
-            Int32 dwPhyAddrLen = 0;
             try
             {
-                abMacAddr = new byte[NUMBER_OF_PHYSICAL_ADDRESS_BYTES];
-                dwPhyAddrLen = abMacAddr.Length;
-
-                if (SendARP(dwIP, 0, abMacAddr, ref dwPhyAddrLen) != 0)
+                StringBuilder macAddress = new StringBuilder();
+                Int32 remote = inet_addr(this.IpAds);
+                Int64 macInfo = new Int64();
+                Int32 length = 6;
+                int Result = SendARP(remote, 0, ref macInfo, ref length);
+                string temp = Convert.ToString(macInfo, 16).PadLeft(12, '0').ToUpper();
+                
+                if (SendARP(remote, 0, ref macInfo, ref length) == 0)
                 {
-                    //Get Error!Reset byte array to null
-                    abMacAddr = null;
+                    int x = 12;
+                    for (int i = 0; i < 6; i++)
+                    {
+                        if (i == 5)
+                        {
+                            macAddress.Append(temp.Substring(x - 2, 2));
+                        }
+                        else
+                        {
+                            macAddress.Append(temp.Substring(x - 2, 2) + "-");
+                        }
+                        x -= 2;
+                    }
+                    macDest = macAddress.ToString();
+                    this.state = 1;
+                    form.ipList.Add(this);
+                    //Console.WriteLine(this.IpAds + ":" + Result + ":" + macDest);
                 }
+                
             }
             catch
             {
-                abMacAddr = null;
+                
             }
 
-        }   
+        }
     }
 }
