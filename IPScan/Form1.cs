@@ -145,14 +145,31 @@ namespace IPScan
             {
                 foreach (IPMessage ip in ipList)
                 {
+                    IPList.Items.Add(ip.IpAds);
                     if (ip.state == 1)
                     {
-                        IPList.Items.Add(ip.IpAds + "  活动");
+                        IPList.Items.Add("状态：活动");
                     }
                     else
                     {
-                        IPList.Items.Add(ip.IpAds + "  下线");
+                        IPList.Items.Add(ip.IpAds + "状态：下线");
                     }
+                    if (ip.equipType == IPMessage.COMPUTER)
+                    {
+                        IPList.Items.Add("类型：主机");
+                    }
+                    else if (ip.equipType == IPMessage.ROUTER)
+                    {
+                        IPList.Items.Add("类型：路由器");
+                    }
+                    else if (ip.equipType == IPMessage.CAN_NOT_JUDGE)
+                    {
+                        IPList.Items.Add("类型：类型 无法识别");
+                    }
+                    //else
+                    //{
+                    //    IPList.Items.Add("类型：未开启服务");
+                    //}
                 }
             }
             else
@@ -257,6 +274,11 @@ namespace IPScan
     //此类用于线程调用时，存数据
     public class IPMessage
     {
+        //设备类型的宏定义
+        public const int CAN_NOT_JUDGE = -1;//无法识别的设备
+        public const int NOT_JUDGE = 0;//未开启服务无法识别
+        public const int COMPUTER = 1;//电脑主机
+        public const int ROUTER = 2;//路由器
         #region 导入ARP_API
         [DllImport("iphlpapi.dll")]
         static extern int SendARP(Int32 DestIP, Int32 SrcIP, ref Int64 MacAddr, ref Int32 PhyAddrLen);
@@ -270,8 +292,8 @@ namespace IPScan
         public string macDest;
         //是否是活动主机（0-不是活动 1-活动主机）
         public int state = 0;
-        //设备类型(0-未识别 1-电脑主机 2-路由器...)默认为主机
-        public int equipType = 1;
+        //设备类型(-1-无法识别 0-未识别 1-电脑主机 2-路由器...)
+        public int equipType = 0;
         //引用控件类
         public Form1 form;
 
@@ -279,7 +301,7 @@ namespace IPScan
         public void ScanIP() //设备地址扫描
         {
             arpScan();
-            pingScan();
+            //pingScan();
             if (this.state == 1)
             {
                 judgeEquipType();
@@ -373,7 +395,7 @@ namespace IPScan
             }
             else//无法识别
             {
-                this.equipType = 0;
+                this.equipType = -1;
             }
 
         }
